@@ -1,135 +1,94 @@
 using UnityEngine;
 
-/// <summary>
-/// Kontroler gracza FPS — ruch (WASD), kamera (mysz), sprint, interakcja.
-/// Obsługuje CharacterController dla kolizji.
-/// </summary>
-[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    [SerializeField] private float walkSpeed = 4f;
-    [SerializeField] private float sprintSpeed = 7f;
-    [SerializeField] private float gravity = -15f;
-    [SerializeField] private float jumpHeight = 1.2f;
+    public float moveSpeed = 5f;
+    public float groundDrag = 6f;
 
     [Header("Mouse Look")]
-    [SerializeField] private float mouseSensitivity = 2f;
-    [SerializeField] private float maxLookAngle = 80f;
-    [SerializeField] private Transform cameraHolder;
+    public float mouseSensitivity = 2f;
+    public Transform cameraHolder; // порожній GameObject з Camera всередині
 
-    [Header("Interaction")]
-    [SerializeField] private float interactionRange = 3f;
-    [SerializeField] private LayerMask interactableLayer;
-    [SerializeField] private KeyCode interactKey = KeyCode.E;
+    [Header("Ground Check")]
+    public LayerMask groundMask;
+    public float groundCheckRadius = 0.3f;
 
-    private CharacterController characterController;
-    private Vector3 velocity;
+    private Rigidbody rb;
     private float xRotation = 0f;
     private bool isGrounded;
 
-    private Camera playerCamera;
-
-    private void Awake()
+    void Start()
     {
-        characterController = GetComponent<CharacterController>();
-        playerCamera = cameraHolder != null
-            ? cameraHolder.GetComponentInChildren<Camera>()
-            : GetComponentInChildren<Camera>();
-    }
+        rb = GetComponent<Rigidbody>();
+        rb.freezeRotation = true; // щоб Rigidbody не перекидав гравця
 
-    private void Start()
-    {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
-    private void Update()
+    void Update()
     {
-        // Не рухатися, якщо гра не в стані Playing
-        if (GameManager.Instance != null &&
-            GameManager.Instance.CurrentState != GameManager.GameState.Playing)
-            return;
-
-        HandleMouseLook();
-        HandleMovement();
-        HandleInteraction();
+        GroundCheck();
+        MouseLook();
+        ApplyDrag();
     }
 
-    // ─────────────── Камера ───────────────
-
-    private void HandleMouseLook()
+    void FixedUpdate()
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        Move();
+    }
 
-        // Вертикальний поворот (камера)
+    void GroundCheck()
+    {
+        // Перевірка чи гравець стоїть на землі
+        isGrounded = Physics.CheckSphere(
+            transform.position - new Vector3(0, 0.9f, 0),
+            groundCheckRadius,
+            groundMask
+        );
+    }
+
+    void MouseLook()
+    {
+        float mouseX = Input.GetAxisRaw("Mouse X") * mouseSensitivity;
+        float mouseY = Input.GetAxisRaw("Mouse Y") * mouseSensitivity;
+
+        // Поворот камери вгору/вниз
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -maxLookAngle, maxLookAngle);
+        xRotation = Mathf.Clamp(xRotation, -80f, 80f);
+        cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
 
-        Transform camTransform = cameraHolder != null ? cameraHolder : transform;
-        camTransform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-
-        // Горизонтальний поворот (тіло гравця)
+        // Поворот тіла гравця вліво/вправо
         transform.Rotate(Vector3.up * mouseX);
     }
 
-    // ─────────────── Рух ───────────────
-
-    private void HandleMovement()
+    void Move()
     {
-        isGrounded = characterController.isGrounded;
+        float h = Input.GetAxisRaw("Horizontal"); // A/D
+        float v = Input.GetAxisRaw("Vertical");   // W/S
 
-        if (isGrounded && velocity.y < 0f)
+        Vector3 dir = transform.forward * v + transform.right * h;
+        dir.Normalize();
+
+        // Застосовуємо силу тільки якщо стоїмо на землі
+        if (isGrounded)
         {
-            velocity.y = -2f; // тримаємо на землі
+            rb.AddForce(dir * moveSpeed * 10f, ForceMode.Force);
         }
 
-        // Введення WASD
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-
-        Vector3 move = transform.right * moveX + transform.forward * moveZ;
-
-        // Sprint
-        bool isSprinting = Input.GetKey(KeyCode.LeftShift);
-        float currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
-
-        characterController.Move(move * currentSpeed * Time.deltaTime);
-
-        // Стрибок
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        // Обмеження максимальної швидкості
+        Vector3 flat = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        if (flat.magnitude > moveSpeed)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
-
-        // Гравітація
-        velocity.y += gravity * Time.deltaTime;
-        characterController.Move(velocity * Time.deltaTime);
-    }
-
-    // ─────────────── Взаємодія з об'єктами ───────────────
-
-    private void HandleInteraction()
-    {
-        if (Input.GetKeyDown(interactKey))
-        {
-            Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-
-            if (Physics.Raycast(ray, out RaycastHit hit, interactionRange, interactableLayer))
-            {
-                IInteractable interactable = hit.collider.GetComponent<IInteractable>();
-                if (interactable != null)
-                {
-                    interactable.Interact();
-                    Debug.Log($"[Player] Interacted with: {hit.collider.gameObject.name}");
-                }
-            }
+            Vector3 capped = flat.normalized * moveSpeed;
+            rb.linearVelocity = new Vector3(capped.x, rb.linearVelocity.y, capped.z);
         }
     }
 
-    /// <summary>
-    /// Zwraca pozycję gracza (używane np. przez EnemyAI).
-    /// </summary>
-    public Vector3 GetPosition() => transform.position;
+    void ApplyDrag()
+    {
+        rb.linearDamping = isGrounded ? groundDrag : 0.5f;
+    }
 }
