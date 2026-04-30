@@ -3,92 +3,108 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement")]
-    public float moveSpeed = 5f;
+    [Header("Movement Settings")]
+    public float moveSpeed = 4f;        // Зменшено для кращого контролю в хорорі
     public float groundDrag = 6f;
 
     [Header("Mouse Look")]
     public float mouseSensitivity = 2f;
-    public Transform cameraHolder; // РїРѕСЂРѕР¶РЅС–Р№ GameObject Р· Camera РІСЃРµСЂРµРґРёРЅС–
+    public Transform cameraHolder;
+    private float xRotation = 0f;
 
     [Header("Ground Check")]
     public LayerMask groundMask;
     public float groundCheckRadius = 0.3f;
+    private float playerHeight = 2f;
+    private bool isGrounded;
 
     private Rigidbody rb;
-    private float xRotation = 0f;
-    private bool isGrounded;
+    private float horizontalInput;
+    private float verticalInput;
+    private Vector3 moveDirection;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true; // С‰РѕР± Rigidbody РЅРµ РїРµСЂРµРєРёРґР°РІ РіСЂР°РІС†СЏ
 
+        // Вимикаємо гравітацію для ручного контролю або налаштовуємо Rigidbody
+        rb.freezeRotation = true;
+
+        // Ховаємо курсор
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
     void Update()
     {
-        GroundCheck();
-        MouseLook();
-        ApplyDrag();
+        // Перевірка приземлення
+        Vector3 spherePosition = new Vector3(transform.position.x, transform.position.y - playerHeight / 2, transform.position.z);
+        isGrounded = Physics.CheckSphere(spherePosition, groundCheckRadius, groundMask);
+
+        MyInput();
+        Look();
+        SpeedControl();
+
+        // Налаштування тертя
+        if (isGrounded)
+            rb.linearDamping = groundDrag;
+        else
+            rb.linearDamping = 0;
     }
 
     void FixedUpdate()
     {
-        Move();
+        MovePlayer();
     }
 
-    void GroundCheck()
+    private void MyInput()
     {
-        // РџРµСЂРµРІС–СЂРєР° С‡Рё РіСЂР°РІРµС†СЊ СЃС‚РѕС—С‚СЊ РЅР° Р·РµРјР»С–
-        isGrounded = Physics.CheckSphere(
-            transform.position - new Vector3(0, 0.9f, 0),
-            groundCheckRadius,
-            groundMask
-        );
+        horizontalInput = Input.GetAxisRaw("Horizontal");
+        verticalInput = Input.GetAxisRaw("Vertical");
     }
 
-    void MouseLook()
+    private void Look()
     {
         float mouseX = Input.GetAxisRaw("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxisRaw("Mouse Y") * mouseSensitivity;
 
-        // РџРѕРІРѕСЂРѕС‚ РєР°РјРµСЂРё РІРіРѕСЂСѓ/РІРЅРёР·
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -80f, 80f);
-        cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
-        // РџРѕРІРѕСЂРѕС‚ С‚С–Р»Р° РіСЂР°РІС†СЏ РІР»С–РІРѕ/РІРїСЂР°РІРѕ
+        if (cameraHolder != null)
+        {
+            cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        }
         transform.Rotate(Vector3.up * mouseX);
     }
 
-    void Move()
+    private void MovePlayer()
     {
-        float h = Input.GetAxisRaw("Horizontal"); // A/D
-        float v = Input.GetAxisRaw("Vertical");   // W/S
+        // Напрямок руху відносно погляду гравця
+        moveDirection = transform.forward * verticalInput + transform.right * horizontalInput;
 
-        Vector3 dir = transform.forward * v + transform.right * h;
-        dir.Normalize();
-
-        // Р—Р°СЃС‚РѕСЃРѕРІСѓС”РјРѕ СЃРёР»Сѓ С‚С–Р»СЊРєРё СЏРєС‰Рѕ СЃС‚РѕС—РјРѕ РЅР° Р·РµРјР»С–
         if (isGrounded)
         {
-            rb.AddForce(dir * moveSpeed * 10f, ForceMode.Force);
+            // Пряме керування швидкістю для усунення надмірної розгонистості
+            Vector3 targetVelocity = moveDirection.normalized * moveSpeed;
+            rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
         }
-
-        // РћР±РјРµР¶РµРЅРЅСЏ РјР°РєСЃРёРјР°Р»СЊРЅРѕС— С€РІРёРґРєРѕСЃС‚С–
-        Vector3 flat = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        if (flat.magnitude > moveSpeed)
+        else
         {
-            Vector3 capped = flat.normalized * moveSpeed;
-            rb.linearVelocity = new Vector3(capped.x, rb.linearVelocity.y, capped.z);
+            // В повітрі додаємо трохи сили, щоб рух був менш різким
+            rb.AddForce(moveDirection.normalized * moveSpeed * 2f, ForceMode.Force);
         }
     }
 
-    void ApplyDrag()
+    private void SpeedControl()
     {
-        rb.linearDamping = isGrounded ? groundDrag : 0.5f;
+        // Обмеження швидкості, щоб не було "ривків"
+        Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+
+        if (flatVel.magnitude > moveSpeed)
+        {
+            Vector3 limitedVel = flatVel.normalized * moveSpeed;
+            rb.linearVelocity = new Vector3(limitedVel.x, rb.linearVelocity.y, limitedVel.z);
+        }
     }
 }
