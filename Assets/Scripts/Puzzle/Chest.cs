@@ -1,22 +1,33 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-public class Chest : MonoBehaviour
+public class Chest : MonoBehaviour, IInteractable
 {
+    public enum ItemType { Key, Generic }
+
+    [Serializable]
+    public class ChestItem
+    {
+        public string name = "Item";
+        public ItemType type = ItemType.Generic;
+        public int count = 1;
+    }
+
     [Header("Lid")]
     public Transform lid;
     public string lidChildName = "Chest_Top";
     public Vector3 lidOpenEuler = new Vector3(-90f, 0f, 0f);
-
-    [Header("Trigger")]
-    public float triggerDistance = 2.2f;
     public float openSpeed = 3f;
-    public bool oneShot = true;
+
+    [Header("Items")]
+    public List<ChestItem> items = new List<ChestItem> { new ChestItem { name = "Key", type = ItemType.Key, count = 1 } };
+
+    public string Prompt => _opened ? "Look Inside" : "Open Chest";
 
     Quaternion _lidClosed;
     Quaternion _lidOpen;
-    Transform _player;
     bool _opened;
-    bool _animating;
 
     void Start()
     {
@@ -26,9 +37,6 @@ public class Chest : MonoBehaviour
             _lidClosed = lid.localRotation;
             _lidOpen = _lidClosed * Quaternion.Euler(lidOpenEuler);
         }
-
-        var p = GameObject.FindWithTag("Player");
-        if (p != null) _player = p.transform;
     }
 
     Transform FindLid(Transform root)
@@ -45,30 +53,29 @@ public class Chest : MonoBehaviour
     void Update()
     {
         if (lid == null) return;
+        Quaternion target = _opened ? _lidOpen : _lidClosed;
+        lid.localRotation = Quaternion.Slerp(lid.localRotation, target, Time.deltaTime * openSpeed);
+    }
 
-        if (!_opened && _player != null)
-        {
-            float dist = Vector3.Distance(transform.position, _player.position);
-            if (dist < triggerDistance)
-            {
-                _opened = true;
-                _animating = true;
-            }
-            else if (!oneShot && _animating)
-            {
-                _animating = true;
-            }
-        }
+    public void Interact()
+    {
+        _opened = true;
+        ChestUI.Instance.Open(this);
+    }
 
-        if (_animating)
+    public void TakeItem(int index)
+    {
+        if (index < 0 || index >= items.Count) return;
+        var it = items[index];
+        if (it.type == ItemType.Key && GameManager.Instance != null)
         {
-            Quaternion target = _opened ? _lidOpen : _lidClosed;
-            lid.localRotation = Quaternion.Slerp(lid.localRotation, target, Time.deltaTime * openSpeed);
-            if (Quaternion.Angle(lid.localRotation, target) < 0.5f)
-            {
-                lid.localRotation = target;
-                _animating = false;
-            }
+            for (int i = 0; i < it.count; i++) GameManager.Instance.AddKey();
         }
+        items.RemoveAt(index);
+    }
+
+    public void TakeAll()
+    {
+        for (int i = items.Count - 1; i >= 0; i--) TakeItem(i);
     }
 }

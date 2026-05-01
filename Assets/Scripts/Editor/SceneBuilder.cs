@@ -119,14 +119,23 @@ public static class SceneBuilder
     [MenuItem("Tools/Scene Builder/Add HUD to GameScene")]
     public static void AddHUDToGameScene()
     {
+        var oldCanvas = GameObject.Find("HUD_Canvas");
+        if (oldCanvas != null) GameObject.DestroyImmediate(oldCanvas);
+
         var canvas = CreateCanvas("HUD_Canvas", out var es);
         var hudGO = new GameObject("HUD");
         hudGO.transform.SetParent(canvas.transform, false);
         var hud = hudGO.AddComponent<HUD>();
 
-        var hpBar = CreateSlider(canvas.transform, "HPSlider", new Vector2(-400, 240), new Vector2(280, 30));
-        var hpText = CreateText(canvas.transform, "HPText", "HP 100/100", 28, new Vector2(-400, 285), TextAlignmentOptions.Left);
-        var keysText = CreateText(canvas.transform, "KeysText", "Keys 0/5", 36, new Vector2(400, 280), TextAlignmentOptions.Right);
+        var hpText = CreateText(canvas.transform, "HPText", "HP 100/100", 32, Vector2.zero, TextAlignmentOptions.Left);
+        AnchorTo(hpText.rectTransform, new Vector2(0, 0), new Vector2(40, 90), new Vector2(320, 40));
+
+        var hpBar = CreateSlider(canvas.transform, "HPSlider", Vector2.zero, new Vector2(320, 24));
+        AnchorTo(hpBar.GetComponent<RectTransform>(), new Vector2(0, 0), new Vector2(40, 50), new Vector2(320, 24));
+
+        var keysText = CreateText(canvas.transform, "KeysText", "Keys 0/3", 44, Vector2.zero, TextAlignmentOptions.Right);
+        AnchorTo(keysText.rectTransform, new Vector2(1, 1), new Vector2(-40, -50), new Vector2(360, 60));
+
         var msg = CreateText(canvas.transform, "MessageText", "", 96, Vector2.zero);
         msg.gameObject.SetActive(false);
 
@@ -136,9 +145,25 @@ public static class SceneBuilder
         hud.messageText = msg;
 
         AddGameManager();
+        var gmGO = GameObject.Find("GameManager");
+        if (gmGO != null)
+        {
+            var gm = gmGO.GetComponent<GameManager>();
+            if (gm != null) gm.keysTotal = 3;
+        }
+
         EditorSceneManager.MarkAllScenesDirty();
         EditorSceneManager.SaveOpenScenes();
-        Debug.Log("HUD додано в активну сцену");
+        Debug.Log("HUD оновлено: HP внизу зліва, Keys зверху справа, всього 3 ключі");
+    }
+
+    static void AnchorTo(RectTransform rt, Vector2 anchor, Vector2 anchoredPos, Vector2 size)
+    {
+        rt.anchorMin = anchor;
+        rt.anchorMax = anchor;
+        rt.pivot = anchor;
+        rt.sizeDelta = size;
+        rt.anchoredPosition = anchoredPos;
     }
 
     [MenuItem("Tools/Scene Builder/Add All Scenes To Build")]

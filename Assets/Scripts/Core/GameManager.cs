@@ -7,7 +7,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Klucze")]
     public int keysCollected = 0;
-    public int keysTotal = 5;
+    public int keysTotal = 3;
 
     public static event System.Action<int, int> OnKeysChanged;
     public static event System.Action OnGameWon;
