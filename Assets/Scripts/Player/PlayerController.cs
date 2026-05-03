@@ -3,108 +3,165 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float moveSpeed = 4f;        // Зменшено для кращого контролю в хорорі
+    [Header("Movement")]
+    public float walkSpeed = 4f;
+    public float sprintMultiplier = 1.5f;
+    public float acceleration = 14f;        // РїР»Р°РІРЅРёР№ СЂРѕР·РіС–РЅ
+    public float deceleration = 18f;        // РїР»Р°РІРЅРµ РіР°Р»СЊРјСѓРІР°РЅРЅСЏ
+    public float jumpForce = 6f;
     public float groundDrag = 6f;
+
+    [Header("Sprint stamina")]
+    public float sprintStaminaPerSecond = 12f;
+    public float minStaminaToSprint = 5f;
 
     [Header("Mouse Look")]
     public float mouseSensitivity = 2f;
+    public float mouseSmoothing = 0.05f;    // 0 = РјРёС‚С‚С”РІРѕ, 0.1 = РїР»Р°РІРЅРѕ
     public Transform cameraHolder;
-    private float xRotation = 0f;
+
+    [Header("Headbob")]
+    public bool headbobEnabled = true;
+    public float bobFrequency = 8f;
+    public float bobAmplitude = 0.05f;
+    public float bobSprintMultiplier = 1.4f;
+
+    [Header("FOV kick")]
+    public Camera viewCamera;
+    public float baseFov = 60f;
+    public float sprintFov = 70f;
+    public float fovLerpSpeed = 8f;
 
     [Header("Ground Check")]
     public LayerMask groundMask;
     public float groundCheckRadius = 0.3f;
     private float playerHeight = 2f;
-    private bool isGrounded;
 
     private Rigidbody rb;
-    private float horizontalInput;
-    private float verticalInput;
-    private Vector3 moveDirection;
+    private PlayerStamina stamina;
+    private Vector3 _moveInput;
+    private Vector3 _currentVelocity;       // Р·РіР»Р°РґР¶РµРЅР° С€РІРёРґРєС–СЃС‚СЊ
+    private float _xRotation = 0f;
+    private float _smoothMouseX, _smoothMouseY;
+    private float _smoothMouseXVel, _smoothMouseYVel;
+    private bool _isGrounded;
+    private bool _isSprinting;
+    private float _bobTimer;
+    private Vector3 _camHolderBasePos;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-        // Вимикаємо гравітацію для ручного контролю або налаштовуємо Rigidbody
         rb.freezeRotation = true;
+        stamina = GetComponent<PlayerStamina>();
 
-        // Ховаємо курсор
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        if (viewCamera == null && cameraHolder != null)
+            viewCamera = cameraHolder.GetComponentInChildren<Camera>();
+
+        if (cameraHolder != null) _camHolderBasePos = cameraHolder.localPosition;
     }
 
     void Update()
     {
-        // Перевірка приземлення
-        Vector3 spherePosition = new Vector3(transform.position.x, transform.position.y - playerHeight / 2, transform.position.z);
-        isGrounded = Physics.CheckSphere(spherePosition, groundCheckRadius, groundMask);
+        Vector3 spherePos = new Vector3(transform.position.x, transform.position.y - playerHeight / 2, transform.position.z);
+        _isGrounded = Physics.CheckSphere(spherePos, groundCheckRadius, groundMask);
 
-        MyInput();
+        ReadInput();
         Look();
-        SpeedControl();
+        Headbob();
+        FovKick();
 
-        // Налаштування тертя
-        if (isGrounded)
-            rb.linearDamping = groundDrag;
-        else
-            rb.linearDamping = 0;
+        rb.linearDamping = _isGrounded ? groundDrag : 0;
+
+        if (Input.GetKeyDown(KeyCode.Space) && _isGrounded)
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
     }
 
     void FixedUpdate()
     {
-        MovePlayer();
+        Move();
     }
 
-    private void MyInput()
+    void ReadInput()
     {
-        horizontalInput = Input.GetAxisRaw("Horizontal");
-        verticalInput = Input.GetAxisRaw("Vertical");
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
+        _moveInput = (transform.forward * v + transform.right * h).normalized;
+
+        bool wantSprint = Input.GetKey(KeyCode.LeftShift) && v > 0.1f;
+        // СЏРєС‰Рѕ РЅРµРјР°С” PlayerStamina вЂ” sprint Р±РµР·РєРѕС€С‚РѕРІРЅРёР№
+        bool hasEnoughStamina = stamina == null || stamina.HasAtLeast(minStaminaToSprint);
+        _isSprinting = wantSprint && hasEnoughStamina;
+
+        if (_isSprinting && _moveInput.sqrMagnitude > 0.01f && stamina != null)
+            stamina.DrainContinuous(sprintStaminaPerSecond);
     }
 
-    private void Look()
+    void Look()
     {
-        float mouseX = Input.GetAxisRaw("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxisRaw("Mouse Y") * mouseSensitivity;
+        float rawX = Input.GetAxisRaw("Mouse X") * mouseSensitivity;
+        float rawY = Input.GetAxisRaw("Mouse Y") * mouseSensitivity;
 
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-        if (cameraHolder != null)
+        if (mouseSmoothing > 0f)
         {
-            cameraHolder.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-        }
-        transform.Rotate(Vector3.up * mouseX);
-    }
-
-    private void MovePlayer()
-    {
-        // Напрямок руху відносно погляду гравця
-        moveDirection = transform.forward * verticalInput + transform.right * horizontalInput;
-
-        if (isGrounded)
-        {
-            // Пряме керування швидкістю для усунення надмірної розгонистості
-            Vector3 targetVelocity = moveDirection.normalized * moveSpeed;
-            rb.linearVelocity = new Vector3(targetVelocity.x, rb.linearVelocity.y, targetVelocity.z);
+            _smoothMouseX = Mathf.SmoothDamp(_smoothMouseX, rawX, ref _smoothMouseXVel, mouseSmoothing);
+            _smoothMouseY = Mathf.SmoothDamp(_smoothMouseY, rawY, ref _smoothMouseYVel, mouseSmoothing);
         }
         else
         {
-            // В повітрі додаємо трохи сили, щоб рух був менш різким
-            rb.AddForce(moveDirection.normalized * moveSpeed * 2f, ForceMode.Force);
+            _smoothMouseX = rawX;
+            _smoothMouseY = rawY;
+        }
+
+        _xRotation -= _smoothMouseY;
+        _xRotation = Mathf.Clamp(_xRotation, -90f, 90f);
+
+        if (cameraHolder != null) cameraHolder.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
+        transform.Rotate(Vector3.up * _smoothMouseX);
+    }
+
+    void Move()
+    {
+        float targetSpeed = walkSpeed * (_isSprinting ? sprintMultiplier : 1f);
+        Vector3 targetVel = _moveInput * targetSpeed;
+        Vector3 currentFlat = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+
+        float rate = (_moveInput.sqrMagnitude > 0.01f) ? acceleration : deceleration;
+        Vector3 newFlat = Vector3.MoveTowards(currentFlat, targetVel, rate * Time.fixedDeltaTime);
+
+        rb.linearVelocity = new Vector3(newFlat.x, rb.linearVelocity.y, newFlat.z);
+    }
+
+    void Headbob()
+    {
+        if (!headbobEnabled || cameraHolder == null) return;
+
+        Vector3 flat = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        float speed = flat.magnitude;
+
+        if (_isGrounded && speed > 0.5f)
+        {
+            float freq = bobFrequency * (_isSprinting ? bobSprintMultiplier : 1f);
+            float amp = bobAmplitude * (_isSprinting ? bobSprintMultiplier : 1f);
+            _bobTimer += Time.deltaTime * freq;
+            float bobY = Mathf.Sin(_bobTimer) * amp;
+            float bobX = Mathf.Cos(_bobTimer * 0.5f) * amp * 0.5f;
+            cameraHolder.localPosition = _camHolderBasePos + new Vector3(bobX, bobY, 0f);
+        }
+        else
+        {
+            _bobTimer = 0f;
+            cameraHolder.localPosition = Vector3.Lerp(cameraHolder.localPosition, _camHolderBasePos, Time.deltaTime * 8f);
         }
     }
 
-    private void SpeedControl()
+    void FovKick()
     {
-        // Обмеження швидкості, щоб не було "ривків"
-        Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-
-        if (flatVel.magnitude > moveSpeed)
-        {
-            Vector3 limitedVel = flatVel.normalized * moveSpeed;
-            rb.linearVelocity = new Vector3(limitedVel.x, rb.linearVelocity.y, limitedVel.z);
-        }
+        if (viewCamera == null) return;
+        float target = _isSprinting ? sprintFov : baseFov;
+        viewCamera.fieldOfView = Mathf.Lerp(viewCamera.fieldOfView, target, Time.deltaTime * fovLerpSpeed);
     }
 }

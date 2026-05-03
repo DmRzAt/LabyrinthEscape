@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Chest : MonoBehaviour, IInteractable
 {
-    public enum ItemType { Key, Generic }
+    public enum ItemType { Key, Generic, Sword }
 
     [Serializable]
     public class ChestItem
@@ -70,6 +70,17 @@ public class Chest : MonoBehaviour, IInteractable
         if (it.type == ItemType.Key && GameManager.Instance != null)
         {
             for (int i = 0; i < it.count; i++) GameManager.Instance.AddKey();
+        }
+        else if (it.type == ItemType.Sword)
+        {
+            Debug.Log("[Chest] Sword item taken, looking for PlayerAttack...");
+            var atk = UnityEngine.Object.FindFirstObjectByType<PlayerAttack>(FindObjectsInactive.Include);
+            if (atk != null)
+            {
+                Debug.Log("[Chest] PlayerAttack found on: " + atk.gameObject.name + ". Calling EquipSword.");
+                atk.EquipSword();
+            }
+            else Debug.LogWarning("[Chest] PlayerAttack NOT found in scene. Add the component to the Player.");
         }
         items.RemoveAt(index);
     }
