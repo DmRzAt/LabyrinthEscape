@@ -8,6 +8,10 @@ public class HUD : MonoBehaviour
     public Slider hpSlider;
     public TextMeshProUGUI hpText;
 
+    [Header("Stamina")]
+    public Slider staminaSlider;
+    public TextMeshProUGUI staminaText;
+
     [Header("Keys")]
     public TextMeshProUGUI keysText;
 
@@ -17,14 +21,22 @@ public class HUD : MonoBehaviour
     void OnEnable()
     {
         PlayerHealth.OnHealthChanged += UpdateHP;
+        PlayerStamina.OnStaminaChanged += UpdateStamina;
         GameManager.OnKeysChanged   += UpdateKeys;
         GameManager.OnGameWon       += ShowWin;
         GameManager.OnGameLost      += ShowLose;
     }
 
+    void Start()
+    {
+        if (GameManager.Instance != null)
+            UpdateKeys(GameManager.Instance.keysCollected, GameManager.Instance.keysTotal);
+    }
+
     void OnDisable()
     {
         PlayerHealth.OnHealthChanged -= UpdateHP;
+        PlayerStamina.OnStaminaChanged -= UpdateStamina;
         GameManager.OnKeysChanged   -= UpdateKeys;
         GameManager.OnGameWon       -= ShowWin;
         GameManager.OnGameLost      -= ShowLose;
@@ -34,6 +46,12 @@ public class HUD : MonoBehaviour
     {
         if (hpSlider != null) { hpSlider.maxValue = max; hpSlider.value = current; }
         if (hpText   != null) hpText.text = $"HP {current}/{max}";
+    }
+
+    void UpdateStamina(float current, float max)
+    {
+        if (staminaSlider != null) { staminaSlider.maxValue = max; staminaSlider.value = current; }
+        if (staminaText != null) staminaText.text = $"SP {Mathf.CeilToInt(current)}/{Mathf.CeilToInt(max)}";
     }
 
     void UpdateKeys(int collected, int total)
