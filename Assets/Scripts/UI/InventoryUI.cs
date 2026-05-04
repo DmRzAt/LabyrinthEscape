@@ -118,7 +118,6 @@ public class InventoryUI : MonoBehaviour
         hrt2.sizeDelta = new Vector2(0, 30);
         hrt2.anchoredPosition = new Vector2(0, 10);
 
-        // grid
         var grid = NewGO("Grid", panel.transform);
         var grt = grid.GetComponent<RectTransform>();
         grt.anchorMin = new Vector2(0, 0);
@@ -140,64 +139,71 @@ public class InventoryUI : MonoBehaviour
 
         if (_inv == null) return;
 
-        for (int i = 0; i < _inv.items.Count; i++)
+        int total = _inv.maxSlots;
+        for (int i = 0; i < total; i++)
         {
-            var it = _inv.items[i];
-            int idx = i;
-            var slot = NewGO("Item_" + i, _itemsGrid);
+            InventoryItem it = (i < _inv.items.Count) ? _inv.items[i] : null;
+            var slot = NewGO("Slot_" + i, _itemsGrid);
             var img = slot.AddComponent<Image>();
-            img.color = (it == _selectedItem) ? ColSlotHi : ColSlot;
+            img.color = (it != null && it == _selectedItem) ? ColSlotHi : ColSlot;
 
-            var btn = slot.AddComponent<Button>();
-            var colors = btn.colors;
-            colors.normalColor = (it == _selectedItem) ? ColSlotHi : ColSlot;
-            colors.highlightedColor = ColSlotHi;
-            btn.colors = colors;
-            btn.targetGraphic = img;
-            btn.onClick.AddListener(() => { _selectedItem = it; Refresh(); });
+            var outline = slot.AddComponent<Outline>();
+            outline.effectColor = new Color(0, 0, 0, 0.5f);
+            outline.effectDistance = new Vector2(2, -2);
 
-            // показати у яких слотах hotbar він
-            for (int h = 0; h < _inv.hotbarSize; h++)
+            if (it != null)
             {
-                if (_inv.hotbar[h] == it)
+                var captured = it;
+                var btn = slot.AddComponent<Button>();
+                var colors = btn.colors;
+                colors.normalColor = (it == _selectedItem) ? ColSlotHi : ColSlot;
+                colors.highlightedColor = ColSlotHi;
+                btn.colors = colors;
+                btn.targetGraphic = img;
+                btn.onClick.AddListener(() => { _selectedItem = captured; Refresh(); });
+
+                for (int h = 0; h < _inv.hotbarSize; h++)
                 {
-                    var bind = MakeText(slot.transform, "Bind", (h + 1).ToString(), 22, TextAlignmentOptions.TopRight);
-                    bind.color = ColAccent;
-                    bind.fontStyle = FontStyles.Bold;
-                    var brt = bind.rectTransform;
-                    brt.anchorMin = new Vector2(1, 1);
-                    brt.anchorMax = new Vector2(1, 1);
-                    brt.pivot = new Vector2(1, 1);
-                    brt.anchoredPosition = new Vector2(-5, -3);
-                    brt.sizeDelta = new Vector2(25, 25);
+                    if (_inv.hotbar[h] == it)
+                    {
+                        var bind = MakeText(slot.transform, "Bind", (h + 1).ToString(), 22, TextAlignmentOptions.TopRight);
+                        bind.color = ColAccent;
+                        bind.fontStyle = FontStyles.Bold;
+                        var brt = bind.rectTransform;
+                        brt.anchorMin = new Vector2(1, 1);
+                        brt.anchorMax = new Vector2(1, 1);
+                        brt.pivot = new Vector2(1, 1);
+                        brt.anchoredPosition = new Vector2(-5, -3);
+                        brt.sizeDelta = new Vector2(25, 25);
+                        bind.raycastTarget = false;
+                    }
                 }
-            }
 
-            if (it.icon != null)
-            {
-                var iconGO = NewGO("Icon", slot.transform);
-                var icon = iconGO.AddComponent<Image>();
-                icon.sprite = it.icon;
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-                var irt = icon.rectTransform;
-                irt.anchorMin = Vector2.zero;
-                irt.anchorMax = Vector2.one;
-                irt.offsetMin = new Vector2(10, 25);
-                irt.offsetMax = new Vector2(-10, -10);
-            }
+                if (it.icon != null)
+                {
+                    var iconGO = NewGO("Icon", slot.transform);
+                    var icon = iconGO.AddComponent<Image>();
+                    icon.sprite = it.icon;
+                    icon.preserveAspect = true;
+                    icon.raycastTarget = false;
+                    var irt = icon.rectTransform;
+                    irt.anchorMin = Vector2.zero;
+                    irt.anchorMax = Vector2.one;
+                    irt.offsetMin = new Vector2(10, 25);
+                    irt.offsetMax = new Vector2(-10, -10);
+                }
 
-            var name = MakeText(slot.transform, "Name", it.displayName, 14, TextAlignmentOptions.Bottom);
-            var nrt = name.rectTransform;
-            nrt.anchorMin = new Vector2(0, 0);
-            nrt.anchorMax = new Vector2(1, 0);
-            nrt.pivot = new Vector2(0.5f, 0);
-            nrt.anchoredPosition = new Vector2(0, 5);
-            nrt.sizeDelta = new Vector2(0, 18);
-            name.raycastTarget = false;
+                var name = MakeText(slot.transform, "Name", it.displayName, 14, TextAlignmentOptions.Bottom);
+                var nrt = name.rectTransform;
+                nrt.anchorMin = new Vector2(0, 0);
+                nrt.anchorMax = new Vector2(1, 0);
+                nrt.pivot = new Vector2(0.5f, 0);
+                nrt.anchoredPosition = new Vector2(0, 5);
+                nrt.sizeDelta = new Vector2(0, 18);
+                name.raycastTarget = false;
+            }
         }
 
-        // обробка клавіш для прив'язки
         if (_selectedItem != null && _root.activeSelf)
         {
             for (int h = 0; h < _inv.hotbarSize; h++)

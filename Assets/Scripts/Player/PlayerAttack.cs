@@ -4,57 +4,59 @@ using UnityEngine;
 public class PlayerAttack : MonoBehaviour
 {
     [Header("Sword")]
-    public bool hasSword = false;
-    public Transform sword;
-    public bool autoSetupSword = true;
-    public float targetSwordLength = 0.6f;
+    [SerializeField] private bool hasSword = false;
+    [SerializeField] private Transform sword;
+    [SerializeField] private bool autoSetupSword = true;
+    [SerializeField, Range(0.1f, 2f)] private float targetSwordLength = 0.6f;
 
-    [Header("Idle pose (де меч лежить у руці)")]
-    public Vector3 idleLocalPos = new Vector3(0.35f, -0.28f, 0.6f);
-    public Vector3 idleLocalEuler = new Vector3(-45f, 90f, 30f);
+    [Header("Idle pose")]
+    [SerializeField] private Vector3 idleLocalPos = new Vector3(0.35f, -0.28f, 0.6f);
+    [SerializeField] private Vector3 idleLocalEuler = new Vector3(-45f, 90f, 30f);
 
     [Header("Swing (Minecraft-style)")]
-    public Vector3 swingRotationOffset = new Vector3(60f, -30f, 0f); // на скільки повернути меч при ударі (X = вниз, Y = вбік)
-    public Vector3 swingPositionOffset = new Vector3(-0.05f, -0.05f, 0.1f); // легке зміщення при ударі
-    public float swingOutTime = 0.06f;
-    public float swingHoldTime = 0.03f;
-    public float swingBackTime = 0.12f;
-    public float cooldown = 0.25f;
+    [SerializeField] private Vector3 swingRotationOffset = new Vector3(60f, -30f, 0f);
+    [SerializeField] private Vector3 swingPositionOffset = new Vector3(-0.05f, -0.05f, 0.1f);
+    [SerializeField, Range(0.01f, 1f)] private float swingOutTime = 0.06f;
+    [SerializeField, Range(0f, 1f)] private float swingHoldTime = 0.03f;
+    [SerializeField, Range(0.01f, 1f)] private float swingBackTime = 0.12f;
+    [SerializeField, Range(0.05f, 2f)] private float cooldown = 0.25f;
 
     [Header("Heavy attack")]
-    public float heavyHoldThreshold = 0.35f;     // скільки тримати ЛКМ для важкого удару
-    public float heavyDamageMultiplier = 2.2f;
-    public Vector3 heavyRotationOffset = new Vector3(90f, -45f, 0f);
-    public Vector3 heavyPositionOffset = new Vector3(-0.25f, -0.1f, 0.6f);
-    public float heavySwingOutTime = 0.18f;
-    public float heavySwingBackTime = 0.25f;
-    public float heavyCooldown = 0.6f;
+    [SerializeField, Range(0.1f, 2f)] private float heavyHoldThreshold = 0.35f;
+    [SerializeField, Range(1f, 5f)] private float heavyDamageMultiplier = 2.2f;
+    [SerializeField] private Vector3 heavyRotationOffset = new Vector3(90f, -45f, 0f);
+    [SerializeField] private Vector3 heavyPositionOffset = new Vector3(-0.25f, -0.1f, 0.6f);
+    [SerializeField, Range(0.01f, 1.5f)] private float heavySwingOutTime = 0.18f;
+    [SerializeField, Range(0.01f, 1.5f)] private float heavySwingBackTime = 0.25f;
+    [SerializeField, Range(0.05f, 3f)] private float heavyCooldown = 0.6f;
 
     [Header("Block")]
-    public Vector3 blockLocalPos = new Vector3(0.1f, -0.15f, 0.55f);
-    public Vector3 blockLocalEuler = new Vector3(-30f, 60f, -10f);
-    public float blockMoveTime = 0.15f;
-    public float blockStaminaPerSecond = 8f;
+    [SerializeField] private Vector3 blockLocalPos = new Vector3(0.1f, -0.15f, 0.55f);
+    [SerializeField] private Vector3 blockLocalEuler = new Vector3(-30f, 60f, -10f);
+    [SerializeField, Range(0.01f, 1f)] private float blockMoveTime = 0.15f;
+    [SerializeField, Range(0f, 50f)] private float blockStaminaPerSecond = 8f;
 
     [Header("Stamina cost")]
-    public float lightAttackStamina = 12f;
-    public float heavyAttackStamina = 28f;
+    [SerializeField, Range(0f, 100f)] private float lightAttackStamina = 12f;
+    [SerializeField, Range(0f, 100f)] private float heavyAttackStamina = 28f;
 
     [Header("Camera shake")]
-    public float lightShake = 0.05f;
-    public float heavyShake = 0.15f;
+    [SerializeField, Range(0f, 1f)] private float lightShake = 0.05f;
+    [SerializeField, Range(0f, 1f)] private float heavyShake = 0.15f;
 
     [Header("Hit detection")]
-    public int damage = 25;
-    public Vector3 hitboxOffset = new Vector3(0f, 0.3f, 0f);
-    public Vector3 hitboxSize = new Vector3(0.15f, 0.6f, 0.15f);
-    public LayerMask enemyMask = ~0;
+    [SerializeField, Range(1, 200)] private int damage = 25;
+    [SerializeField] private Vector3 hitboxOffset = new Vector3(0f, 0.3f, 0f);
+    [SerializeField] private Vector3 hitboxSize = new Vector3(0.15f, 0.6f, 0.15f);
+    [SerializeField, Range(0.5f, 4f)] private float attackRange = 2f;
+    [SerializeField, Range(0.1f, 1.5f)] private float attackRadius = 0.6f;
+    [SerializeField] private LayerMask enemyMask = ~0;
 
     [Header("Audio")]
-    public AudioClip swingSound;
-    public AudioClip hitSound;
+    [SerializeField] private AudioClip swingSound;
+    [SerializeField] private AudioClip hitSound;
 
-    public Transform attackOrigin;
+    [SerializeField] private Transform attackOrigin;
 
     private AudioSource _audio;
     private BoxCollider _hitbox;
@@ -66,9 +68,12 @@ public class PlayerAttack : MonoBehaviour
     private PlayerStamina _stamina;
     private PlayerHealth _health;
     private System.Collections.Generic.HashSet<EnemyHealth> _hitThisSwing = new System.Collections.Generic.HashSet<EnemyHealth>();
+    private readonly Collider[] _hitResults = new Collider[16];
+    private static readonly Vector3 DefaultHitboxOffset = new Vector3(0f, 0.3f, 0f);
 
     void Start()
     {
+        ValidateHitboxSettings();
         _audio = GetComponent<AudioSource>();
         if (_audio == null) _audio = gameObject.AddComponent<AudioSource>();
         _stamina = GetComponent<PlayerStamina>();
@@ -84,9 +89,15 @@ public class PlayerAttack : MonoBehaviour
         if (sword != null) sword.gameObject.SetActive(hasSword);
     }
 
+    void OnValidate()
+    {
+        ValidateHitboxSettings();
+    }
+
     [ContextMenu("Setup In Editor")]
     public void SetupInEditor()
     {
+        ValidateHitboxSettings();
         if (attackOrigin == null)
         {
             var cam = GetComponentInChildren<Camera>();
@@ -118,7 +129,6 @@ public class PlayerAttack : MonoBehaviour
         sword.localPosition = idleLocalPos;
         sword.localEulerAngles = idleLocalEuler;
 
-        // хітбокс на лезі
         var hitGo = sword.Find("Hitbox");
         if (hitGo == null)
         {
@@ -142,14 +152,18 @@ public class PlayerAttack : MonoBehaviour
 
     public void EquipSword()
     {
-        hasSword = true;
-        if (sword != null) sword.gameObject.SetActive(true);
+        SetSwordEquipped(true);
         Debug.Log("[PlayerAttack] Sword equipped.");
+    }
+
+    public void SetSwordEquipped(bool isEquipped)
+    {
+        hasSword = isEquipped;
+        if (sword != null) sword.gameObject.SetActive(isEquipped);
     }
 
     void Update()
     {
-        // тримаємо idle позу коли не б'ємо і не блокуємо
         if (!_isSwinging && !_isBlocking && sword != null)
         {
             sword.localPosition = idleLocalPos;
@@ -165,7 +179,6 @@ public class PlayerAttack : MonoBehaviour
 
         if (!hasSword) return;
 
-        // BLOCK (ПКМ)
         bool wantBlock = Input.GetMouseButton(1) && !_isSwinging;
         if (wantBlock && _stamina != null && _stamina.HasAtLeast(1f))
         {
@@ -177,9 +190,8 @@ public class PlayerAttack : MonoBehaviour
             StartCoroutine(ExitBlock());
         }
 
-        if (_isBlocking) return; // не атакуємо коли блокуємо
+        if (_isBlocking) return;
 
-        // ATTACK input — heavy/light
         if (Input.GetMouseButton(0) && _cooldownTimer <= 0f && !_isSwinging)
             _lmbHoldTime += Time.deltaTime;
 
@@ -252,12 +264,15 @@ public class PlayerAttack : MonoBehaviour
             float k = t / outTime;
             sword.localPosition = Vector3.Lerp(startPos, endPos, k);
             sword.localRotation = Quaternion.Slerp(startRot, endRot, k);
+            CheckAttackOverlaps();
             yield return null;
         }
         sword.localPosition = endPos;
         sword.localRotation = endRot;
+        CheckAttackOverlaps();
 
         yield return new WaitForSeconds(swingHoldTime);
+        CheckAttackOverlaps();
         if (_hitbox != null) _hitbox.enabled = false;
 
         t = 0f;
@@ -278,25 +293,89 @@ public class PlayerAttack : MonoBehaviour
     public void OnHitboxTrigger(Collider other)
     {
         if (!_isSwinging || _hitbox == null || !_hitbox.enabled) return;
-        if (other.transform.IsChildOf(transform) || other.transform == transform) return;
+        TryDamageCollider(other);
+    }
+
+    private void CheckHitboxOverlaps()
+    {
+        if (!_isSwinging || _hitbox == null || !_hitbox.enabled) return;
+
+        Vector3 center = _hitbox.transform.TransformPoint(_hitbox.center);
+        Vector3 halfExtents = Vector3.Scale(_hitbox.size, _hitbox.transform.lossyScale) * 0.5f;
+        int count = Physics.OverlapBoxNonAlloc(center, halfExtents, _hitResults, _hitbox.transform.rotation, enemyMask, QueryTriggerInteraction.Collide);
+
+        for (int i = 0; i < count; i++)
+        {
+            TryDamageCollider(_hitResults[i]);
+            _hitResults[i] = null;
+        }
+    }
+
+    private void CheckAttackOverlaps()
+    {
+        CheckMeleeOverlaps();
+        CheckHitboxOverlaps();
+    }
+
+    private void CheckMeleeOverlaps()
+    {
+        Transform origin = attackOrigin != null ? attackOrigin : transform;
+        Vector3 start = origin.position + origin.forward * 0.35f;
+        Vector3 end = origin.position + origin.forward * attackRange;
+        int count = Physics.OverlapCapsuleNonAlloc(start, end, attackRadius, _hitResults, enemyMask, QueryTriggerInteraction.Collide);
+
+        for (int i = 0; i < count; i++)
+        {
+            TryDamageCollider(_hitResults[i]);
+            _hitResults[i] = null;
+        }
+    }
+
+    private void ValidateHitboxSettings()
+    {
+        if (hitboxOffset.sqrMagnitude > 9f)
+        {
+            hitboxOffset = DefaultHitboxOffset;
+        }
+
+        hitboxSize.x = Mathf.Max(0.05f, hitboxSize.x);
+        hitboxSize.y = Mathf.Max(0.05f, hitboxSize.y);
+        hitboxSize.z = Mathf.Max(0.05f, hitboxSize.z);
+    }
+
+    private void TryDamageCollider(Collider other)
+    {
+        if (other == null) return;
+        if (other.transform == transform || other.transform.IsChildOf(transform)) return;
         if (((1 << other.gameObject.layer) & enemyMask) == 0) return;
 
-        var hp = other.GetComponentInParent<EnemyHealth>();
-        if (hp != null && !_hitThisSwing.Contains(hp))
-        {
-            _hitThisSwing.Add(hp);
-            int dmg = _heavyQueued ? Mathf.RoundToInt(damage * heavyDamageMultiplier) : damage;
-            hp.TakeDamage(dmg);
-            CameraShake.Shake(0.12f, _heavyQueued ? heavyShake : lightShake);
-            if (hitSound != null) _audio.PlayOneShot(hitSound);
-        }
+        EnemyHealth hp = other.GetComponentInParent<EnemyHealth>();
+        if (hp == null || _hitThisSwing.Contains(hp)) return;
+
+        _hitThisSwing.Add(hp);
+        int dmg = _heavyQueued ? Mathf.RoundToInt(damage * heavyDamageMultiplier) : damage;
+        hp.TakeDamage(dmg);
+        CameraShake.Shake(0.12f, _heavyQueued ? heavyShake : lightShake);
+        if (hitSound != null) _audio.PlayOneShot(hitSound);
     }
 
     void OnDrawGizmosSelected()
     {
-        if (_hitbox == null) return;
-        Gizmos.color = Color.red;
-        Gizmos.matrix = _hitbox.transform.localToWorldMatrix;
-        Gizmos.DrawWireCube(_hitbox.center, _hitbox.size);
+        if (_hitbox != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.matrix = _hitbox.transform.localToWorldMatrix;
+            Gizmos.DrawWireCube(_hitbox.center, _hitbox.size);
+        }
+
+        Transform origin = attackOrigin != null ? attackOrigin : transform;
+        Vector3 start = origin.position + origin.forward * 0.35f;
+        Vector3 end = origin.position + origin.forward * attackRange;
+        Gizmos.matrix = Matrix4x4.identity;
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(start, attackRadius);
+        Gizmos.DrawWireSphere(end, attackRadius);
+        Gizmos.DrawLine(start + origin.up * attackRadius, end + origin.up * attackRadius);
+        Gizmos.DrawLine(start - origin.up * attackRadius, end - origin.up * attackRadius);
     }
 }

@@ -12,6 +12,7 @@ public class Chest : MonoBehaviour, IInteractable
         public string name = "Item";
         public ItemType type = ItemType.Generic;
         public int count = 1;
+        public Sprite icon;
     }
 
     [Header("Lid")]
@@ -67,21 +68,31 @@ public class Chest : MonoBehaviour, IInteractable
     {
         if (index < 0 || index >= items.Count) return;
         var it = items[index];
+
         if (it.type == ItemType.Key && GameManager.Instance != null)
         {
             for (int i = 0; i < it.count; i++) GameManager.Instance.AddKey();
         }
+
+        if (PlayerInventory.Instance != null && it.type != ItemType.Key)
+        {
+            var invItem = new InventoryItem
+            {
+                id = it.name + "_" + it.type,
+                displayName = it.name,
+                kind = it.type == ItemType.Sword ? InventoryItem.ItemKind.Sword : InventoryItem.ItemKind.Generic,
+                icon = it.icon,
+                count = it.count,
+                stackable = false
+            };
+            PlayerInventory.Instance.AddItem(invItem);
+        }
         else if (it.type == ItemType.Sword)
         {
-            Debug.Log("[Chest] Sword item taken, looking for PlayerAttack...");
             var atk = UnityEngine.Object.FindFirstObjectByType<PlayerAttack>(FindObjectsInactive.Include);
-            if (atk != null)
-            {
-                Debug.Log("[Chest] PlayerAttack found on: " + atk.gameObject.name + ". Calling EquipSword.");
-                atk.EquipSword();
-            }
-            else Debug.LogWarning("[Chest] PlayerAttack NOT found in scene. Add the component to the Player.");
+            if (atk != null) atk.EquipSword();
         }
+
         items.RemoveAt(index);
     }
 

@@ -15,14 +15,33 @@ public class PlayerInventory : MonoBehaviour
     public int activeSlot = -1;
 
     public static event System.Action OnInventoryChanged;
-    public static event System.Action<int, InventoryItem> OnHotbarSlotChanged; // (slotIndex, item)
-    public static event System.Action<int, InventoryItem> OnActiveSlotChanged; // (slotIndex, item)
+    public static event System.Action<int, InventoryItem> OnHotbarSlotChanged;
+    public static event System.Action<int, InventoryItem> OnActiveSlotChanged;
 
     void Awake()
     {
         Instance = this;
+        ResizeHotbar();
+    }
+
+    void OnValidate()
+    {
+        ResizeHotbar();
+    }
+
+    void ResizeHotbar()
+    {
+        if (hotbarSize < 1) hotbarSize = 1;
         if (hotbar == null || hotbar.Length != hotbarSize)
-            hotbar = new InventoryItem[hotbarSize];
+        {
+            var newArr = new InventoryItem[hotbarSize];
+            if (hotbar != null)
+            {
+                int copy = Mathf.Min(hotbar.Length, hotbarSize);
+                for (int i = 0; i < copy; i++) newArr[i] = hotbar[i];
+            }
+            hotbar = newArr;
+        }
     }
 
     void Update()
@@ -51,11 +70,11 @@ public class PlayerInventory : MonoBehaviour
 
         if (items.Count >= maxSlots) { Debug.LogWarning("Inventory full!"); return; }
         items.Add(item);
+        Debug.Log($"[Inventory] Added {item.displayName} ({item.kind}). Total items: {items.Count}");
 
-        // авто-додаємо у перший порожній слот hotbar
         for (int i = 0; i < hotbarSize; i++)
         {
-            if (hotbar[i] == null)
+            if (hotbar[i] == null || hotbar[i].IsEmpty)
             {
                 hotbar[i] = item;
                 OnHotbarSlotChanged?.Invoke(i, item);
@@ -70,7 +89,6 @@ public class PlayerInventory : MonoBehaviour
     public void AssignToHotbar(InventoryItem item, int slot)
     {
         if (slot < 0 || slot >= hotbarSize) return;
-        // якщо предмет вже в іншому слоті — приберемо звідти
         for (int i = 0; i < hotbarSize; i++)
         {
             if (hotbar[i] == item) { hotbar[i] = null; OnHotbarSlotChanged?.Invoke(i, null); }
@@ -95,9 +113,8 @@ public class PlayerInventory : MonoBehaviour
         var atk = GetComponent<PlayerAttack>();
         if (atk != null)
         {
-            bool hasSword = item != null && item.kind == InventoryItem.ItemKind.Sword;
-            atk.hasSword = hasSword;
-            if (atk.sword != null) atk.sword.gameObject.SetActive(hasSword);
+            bool hasSword = item != null && !item.IsEmpty && item.kind == InventoryItem.ItemKind.Sword;
+            atk.SetSwordEquipped(hasSword);
         }
     }
 }

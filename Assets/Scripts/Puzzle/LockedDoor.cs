@@ -4,27 +4,39 @@ public class LockedDoor : MonoBehaviour, IInteractable
 {
     public enum HingeSide { Left, Right }
 
-    [Header("Налаштування")]
+    [Header("Settings")]
     public int keysRequired = 1;
     public float openAngle = 90f;
     public float speed = 2f;
+    [SerializeField] private bool _debugLogs = true;
 
-    [Tooltip("Перетягни сюди стулку (UnlockedLeaf)")]
+    [Tooltip("Assign the door leaf, for example UnlockedLeaf.")]
     public Transform doorLeaf;
 
-    [Tooltip("З якого боку петлі відносно стулки")]
+    [Tooltip("Hinge side relative to the door leaf.")]
     public HingeSide hingeSide = HingeSide.Left;
 
     private bool _unlocked = false;
     private bool _open = false;
+    private bool _syncingLinkedDoors;
     private Transform _hinge;
     private Quaternion _closedRot;
     private Quaternion _openRot;
 
-    public string Prompt => _unlocked ? "Open Door" : $"Locked  (Keys: {keysRequired})";
+    public string Prompt => _unlocked ? "Open Door" : $"Locked  (Need: {RequiredKeys}, Have: {AvailableKeys})";
+
+    private int RequiredKeys => Mathf.Max(1, keysRequired);
+    private int AvailableKeys => GameManager.Instance != null ? GameManager.Instance.keysAvailable : 0;
+
+    private void OnValidate()
+    {
+        keysRequired = Mathf.Max(1, keysRequired);
+    }
 
     void Start()
     {
+        keysRequired = RequiredKeys;
+
         if (doorLeaf == null) doorLeaf = transform;
 
         _hinge = new GameObject(doorLeaf.name + "_Hinge").transform;
@@ -51,16 +63,60 @@ public class LockedDoor : MonoBehaviour, IInteractable
         if (!_unlocked)
         {
             if (GameManager.Instance == null) return;
-            if (GameManager.Instance.keysCollected >= keysRequired)
+
+            if (_debugLogs)
             {
-                _unlocked = true;
-                _open = true;
+                Debug.Log($"[LockedDoor] Interact '{name}'. Need={RequiredKeys}, available={GameManager.Instance.keysAvailable}, collected={GameManager.Instance.keysCollected}", this);
             }
+
+            if (AvailableKeys < RequiredKeys)
+            {
+                return;
+            }
+
+            for (int i = 0; i < RequiredKeys; i++)
+            {
+                if (!GameManager.Instance.UseKey())
+                {
+                    return;
+                }
+            }
+
+            UnlockAndOpenLinkedDoors();
+            return;
         }
-        else
+
+        _open = !_open;
+    }
+
+    private void UnlockAndOpenLinkedDoors()
+    {
+        SetUnlockedOpen(true);
+
+        if (_syncingLinkedDoors) return;
+
+        _syncingLinkedDoors = true;
+        SyncLinkedDoors(GetComponentsInParent<LockedDoor>(true));
+        SyncLinkedDoors(GetComponentsInChildren<LockedDoor>(true));
+        _syncingLinkedDoors = false;
+    }
+
+    private void SyncLinkedDoors(LockedDoor[] linkedDoors)
+    {
+        if (linkedDoors == null) return;
+
+        foreach (LockedDoor linkedDoor in linkedDoors)
         {
-            _open = !_open;
+            if (linkedDoor == null || linkedDoor == this) continue;
+
+            linkedDoor.SetUnlockedOpen(false);
         }
+    }
+
+    private void SetUnlockedOpen(bool open)
+    {
+        _unlocked = true;
+        _open = open;
     }
 
     private static Vector3 GetHingeEdgeWorld(Transform leaf, HingeSide side)
