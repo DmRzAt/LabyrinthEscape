@@ -6,8 +6,8 @@ public class PlayerController : MonoBehaviour
     [Header("Movement")]
     public float walkSpeed = 4f;
     public float sprintMultiplier = 1.5f;
-    public float acceleration = 14f;        // плавний розгін
-    public float deceleration = 18f;        // плавне гальмування
+    public float acceleration = 14f;
+    public float deceleration = 18f;
     public float jumpForce = 6f;
     public float groundDrag = 6f;
 
@@ -17,7 +17,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Mouse Look")]
     public float mouseSensitivity = 2f;
-    public float mouseSmoothing = 0.05f;    // 0 = миттєво, 0.1 = плавно
+    public float mouseSmoothing = 0.05f;
     public Transform cameraHolder;
 
     [Header("Headbob")]
@@ -40,7 +40,7 @@ public class PlayerController : MonoBehaviour
     private Rigidbody rb;
     private PlayerStamina stamina;
     private Vector3 _moveInput;
-    private Vector3 _currentVelocity;       // згладжена швидкість
+    private Vector3 _currentVelocity;
     private float _xRotation = 0f;
     private float _smoothMouseX, _smoothMouseY;
     private float _smoothMouseXVel, _smoothMouseYVel;
@@ -92,7 +92,6 @@ public class PlayerController : MonoBehaviour
         _moveInput = (transform.forward * v + transform.right * h).normalized;
 
         bool wantSprint = Input.GetKey(KeyCode.LeftShift) && v > 0.1f;
-        // якщо немає PlayerStamina — sprint безкоштовний
         bool hasEnoughStamina = stamina == null || stamina.HasAtLeast(minStaminaToSprint);
         _isSprinting = wantSprint && hasEnoughStamina;
 

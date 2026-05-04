@@ -16,7 +16,7 @@ public class PlayerHealth : MonoBehaviour
 
     [Header("Block")]
     public bool isBlocking = false;
-    public float blockDamageMultiplier = 0.3f; // 70% reduction при блоці
+    public float blockDamageMultiplier = 0.3f;
 
     public void TakeDamage(int amount)
     {

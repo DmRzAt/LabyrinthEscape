@@ -6,7 +6,7 @@ public class PlayerStamina : MonoBehaviour
     public float maxStamina = 100f;
     public float currentStamina;
     public float regenPerSecond = 25f;
-    public float regenDelay = 1.0f;     // затримка перед регенерацією після витрати
+    public float regenDelay = 1.0f;
 
     public static event System.Action<float, float> OnStaminaChanged;
 

@@ -8,4 +8,9 @@ public class SwordHitbox : MonoBehaviour
     {
         if (owner != null) owner.OnHitboxTrigger(other);
     }
+
+    void OnTriggerStay(Collider other)
+    {
+        if (owner != null) owner.OnHitboxTrigger(other);
+    }
 }

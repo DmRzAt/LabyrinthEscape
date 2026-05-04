@@ -7,6 +7,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Klucze")]
     public int keysCollected = 0;
+    public int keysAvailable = 0;
     public int keysTotal = 3;
 
     public static event System.Action<int, int> OnKeysChanged;
@@ -23,13 +24,14 @@ public class GameManager : MonoBehaviour
     public void AddKey()
     {
         keysCollected++;
+        keysAvailable++;
         OnKeysChanged?.Invoke(keysCollected, keysTotal);
     }
 
     public bool UseKey()
     {
-        if (keysCollected <= 0) return false;
-        keysCollected--;
+        if (keysAvailable <= 0) return false;
+        keysAvailable--;
         OnKeysChanged?.Invoke(keysCollected, keysTotal);
         return true;
     }

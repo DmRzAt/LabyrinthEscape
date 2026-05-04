@@ -44,7 +44,7 @@ public static class SceneBuilder
         var titleRT = title.GetComponent<RectTransform>();
         titleRT.sizeDelta = new Vector2(1600, 130);
 
-        var subtitle = CreateText(mainPanel.transform, "Subtitle", "— Find your way out —", 30, new Vector2(0, 230));
+        var subtitle = CreateText(mainPanel.transform, "Subtitle", "- Find your way out -", 30, new Vector2(0, 230));
         subtitle.fontStyle = FontStyles.Italic;
         subtitle.color = new Color(0.7f, 0.65f, 0.5f);
         var subRT = subtitle.GetComponent<RectTransform>();
@@ -154,7 +154,7 @@ public static class SceneBuilder
 
         EditorSceneManager.MarkAllScenesDirty();
         EditorSceneManager.SaveOpenScenes();
-        Debug.Log("HUD оновлено: HP внизу зліва, Keys зверху справа, всього 3 ключі");
+        Debug.Log("HUD updated: HP bottom left, keys top right, 3 keys total.");
     }
 
     static void AnchorTo(RectTransform rt, Vector2 anchor, Vector2 anchoredPos, Vector2 size)
@@ -177,7 +177,7 @@ public static class SceneBuilder
             if (File.Exists(p)) list.Add(new EditorBuildSettingsScene(p, true));
         }
         EditorBuildSettings.scenes = list.ToArray();
-        Debug.Log($"Сцени додано в Build: {list.Count}");
+        Debug.Log($"Scenes added to Build: {list.Count}");
     }
 
     [MenuItem("Tools/Scene Builder/Set MainMenu as Play Start")]
@@ -185,16 +185,16 @@ public static class SceneBuilder
     {
         string p = $"{SCENES_DIR}/MainMenuScene.unity";
         var asset = AssetDatabase.LoadAssetAtPath<SceneAsset>(p);
-        if (asset == null) { Debug.LogError("MainMenuScene не знайдено. Спочатку Build MainMenuScene."); return; }
+        if (asset == null) { Debug.LogError("MainMenuScene not found. Build MainMenuScene first."); return; }
         EditorSceneManager.playModeStartScene = asset;
-        Debug.Log("Play тепер завжди стартує з MainMenuScene");
+        Debug.Log("Play mode now always starts from MainMenuScene.");
     }
 
     [MenuItem("Tools/Scene Builder/Reset Play Start")]
     public static void ResetPlayStart()
     {
         EditorSceneManager.playModeStartScene = null;
-        Debug.Log("Play стартує з активної сцени");
+        Debug.Log("Play mode starts from the active scene.");
     }
 
     static void EnsureDir()
@@ -206,7 +206,7 @@ public static class SceneBuilder
     {
         string path = $"{SCENES_DIR}/{name}.unity";
         EditorSceneManager.SaveScene(scene, path);
-        Debug.Log($"Збережено: {path}");
+        Debug.Log($"Saved: {path}");
     }
 
     static void AddBasicLighting()

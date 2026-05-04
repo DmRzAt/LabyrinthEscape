@@ -4,16 +4,16 @@ public class Door : MonoBehaviour, IInteractable
 {
     public enum HingeSide { Left, Right }
 
-    [Header("Налаштування")]
+    [Header("Settings")]
     public float openAngle = 90f;
     public float speed = 3f;
     public bool locked = false;
     public string prompt = "Open Door";
 
-    [Tooltip("Перетягни сюди стулку (UnlockedLeaf)")]
+    [Tooltip("Assign the door leaf, for example UnlockedLeaf.")]
     public Transform doorLeaf;
 
-    [Tooltip("З якого боку петлі відносно стулки")]
+    [Tooltip("Hinge side relative to the door leaf.")]
     public HingeSide hingeSide = HingeSide.Left;
 
     public string Prompt => locked ? "Locked" : prompt;
@@ -57,6 +57,16 @@ public class Door : MonoBehaviour, IInteractable
     }
 
     public void Unlock() => locked = false;
+
+    public void SetLocked(bool isLocked) => locked = isLocked;
+
+    public void Open()
+    {
+        if (locked) return;
+        _isOpen = true;
+    }
+
+    public void Close() => _isOpen = false;
 
     private static Vector3 GetHingeEdgeWorld(Transform leaf, HingeSide side)
     {

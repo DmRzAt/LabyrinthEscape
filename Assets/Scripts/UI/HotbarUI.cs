@@ -7,7 +7,7 @@ public class HotbarUI : MonoBehaviour
     [Header("Layout")]
     public Vector2 slotSize = new Vector2(70f, 70f);
     public float spacing = 8f;
-    public Vector2 anchorOffset = new Vector2(0f, 80f); // від низу екрана
+    public Vector2 anchorOffset = new Vector2(0f, 80f);
 
     static readonly Color ColSlot = new Color(0.10f, 0.08f, 0.06f, 0.85f);
     static readonly Color ColSlotActive = new Color(0.85f, 0.65f, 0.30f, 1f);
@@ -84,7 +84,6 @@ public class HotbarUI : MonoBehaviour
             outline.effectDistance = new Vector2(2, -2);
             _slotOutline[i] = outline;
 
-            // номер слота
             var numGO = NewGO("Num", slotGO.transform);
             var num = numGO.AddComponent<TextMeshProUGUI>();
             num.text = (i + 1).ToString();
@@ -99,7 +98,6 @@ public class HotbarUI : MonoBehaviour
             nrt.anchoredPosition = new Vector2(5, -3);
             nrt.sizeDelta = new Vector2(20, 20);
 
-            // іконка
             var iconGO = NewGO("Icon", slotGO.transform);
             var icon = iconGO.AddComponent<Image>();
             icon.preserveAspect = true;
@@ -111,19 +109,20 @@ public class HotbarUI : MonoBehaviour
             irt.offsetMax = new Vector2(-8, -8);
             _slotIcon[i] = icon;
 
-            // назва (внизу)
             var labelGO = NewGO("Label", slotGO.transform);
             var label = labelGO.AddComponent<TextMeshProUGUI>();
-            label.fontSize = 12;
-            label.alignment = TextAlignmentOptions.Bottom;
+            label.fontSize = 18;
+            label.alignment = TextAlignmentOptions.Center;
             label.color = ColText;
+            label.fontStyle = FontStyles.Bold;
             label.text = "";
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.raycastTarget = false;
             var lrt = label.rectTransform;
-            lrt.anchorMin = new Vector2(0, 0);
-            lrt.anchorMax = new Vector2(1, 0);
-            lrt.pivot = new Vector2(0.5f, 0);
-            lrt.anchoredPosition = new Vector2(0, 2);
-            lrt.sizeDelta = new Vector2(0, 16);
+            lrt.anchorMin = Vector2.zero;
+            lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = new Vector2(2, 2);
+            lrt.offsetMax = new Vector2(-2, -2);
             _slotLabel[i] = label;
         }
     }
@@ -131,14 +130,14 @@ public class HotbarUI : MonoBehaviour
     void OnHotbarSlot(int idx, InventoryItem item)
     {
         if (idx < 0 || idx >= _slotIcon.Length) return;
-        if (item != null && item.icon != null)
+        if (item != null && !item.IsEmpty && item.icon != null)
         {
             _slotIcon[idx].sprite = item.icon;
             _slotIcon[idx].enabled = true;
         }
         else _slotIcon[idx].enabled = false;
 
-        _slotLabel[idx].text = item != null ? item.displayName : "";
+        _slotLabel[idx].text = (item != null && !item.IsEmpty) ? item.displayName : "";
     }
 
     void OnActiveSlot(int idx, InventoryItem item)
