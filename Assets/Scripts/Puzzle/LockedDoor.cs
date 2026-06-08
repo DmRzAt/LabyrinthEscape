@@ -2,134 +2,253 @@ using UnityEngine;
 
 public class LockedDoor : MonoBehaviour, IInteractable
 {
-    public enum HingeSide { Left, Right }
+	public enum HingeSide
+	{
+		Left,
+		Right
+	}
 
-    [Header("Settings")]
-    public int keysRequired = 1;
-    public float openAngle = 90f;
-    public float speed = 2f;
-    [SerializeField] private bool _debugLogs = true;
+	[Header("Settings")]
+	public int keysRequired = 1;
 
-    [Tooltip("Assign the door leaf, for example UnlockedLeaf.")]
-    public Transform doorLeaf;
+	public float openAngle = 90f;
 
-    [Tooltip("Hinge side relative to the door leaf.")]
-    public HingeSide hingeSide = HingeSide.Left;
+	[Tooltip("Angular speed in degrees per second.")]
+	public float speed = 180f;
 
-    private bool _unlocked = false;
-    private bool _open = false;
-    private bool _syncingLinkedDoors;
-    private Transform _hinge;
-    private Quaternion _closedRot;
-    private Quaternion _openRot;
+	[SerializeField]
+	private bool _debugLogs = true;
 
-    public string Prompt => _unlocked ? "Open Door" : $"Locked  (Need: {RequiredKeys}, Have: {AvailableKeys})";
+	[Tooltip("Assign the door leaf, for example UnlockedLeaf.")]
+	public Transform doorLeaf;
 
-    private int RequiredKeys => Mathf.Max(1, keysRequired);
-    private int AvailableKeys => GameManager.Instance != null ? GameManager.Instance.keysAvailable : 0;
+	[Tooltip("Hinge side relative to the door leaf.")]
+	public HingeSide hingeSide;
 
-    private void OnValidate()
-    {
-        keysRequired = Mathf.Max(1, keysRequired);
-    }
+	[Tooltip("Doors that should unlock together with this one. Explicit links are preferred over parent/child auto-detect.")]
+	public LockedDoor[] linkedDoors;
 
-    void Start()
-    {
-        keysRequired = RequiredKeys;
+	[Header("Audio")]
+	public AudioClip openClip;
 
-        if (doorLeaf == null) doorLeaf = transform;
+	public AudioClip closeClip;
 
-        _hinge = new GameObject(doorLeaf.name + "_Hinge").transform;
-        _hinge.SetParent(doorLeaf.parent, false);
+	public AudioClip lockedClip;
 
-        _hinge.position = GetHingeEdgeWorld(doorLeaf, hingeSide);
-        _hinge.rotation = doorLeaf.rotation;
+	public AudioClip unlockClip;
 
-        doorLeaf.SetParent(_hinge, true);
+	[Range(0f, 1f)]
+	public float volume = 0.8f;
 
-        _closedRot = _hinge.localRotation;
-        _openRot = _closedRot * Quaternion.Euler(0, openAngle, 0);
-    }
+	private bool _unlocked;
 
-    void Update()
-    {
-        if (_hinge == null) return;
-        _hinge.localRotation = Quaternion.Slerp(_hinge.localRotation,
-            _open ? _openRot : _closedRot, Time.deltaTime * speed);
-    }
+	private bool _open;
 
-    public void Interact()
-    {
-        if (!_unlocked)
-        {
-            if (GameManager.Instance == null) return;
+	private bool _sealed;
 
-            if (_debugLogs)
-            {
-                Debug.Log($"[LockedDoor] Interact '{name}'. Need={RequiredKeys}, available={GameManager.Instance.keysAvailable}, collected={GameManager.Instance.keysCollected}", this);
-            }
+	private bool _syncingLinkedDoors;
 
-            if (AvailableKeys < RequiredKeys)
-            {
-                return;
-            }
+	private Transform _hinge;
 
-            for (int i = 0; i < RequiredKeys; i++)
-            {
-                if (!GameManager.Instance.UseKey())
-                {
-                    return;
-                }
-            }
+	private Quaternion _closedRot;
 
-            UnlockAndOpenLinkedDoors();
-            return;
-        }
+	private Quaternion _openRot;
 
-        _open = !_open;
-    }
+	private AudioSource _audio;
 
-    private void UnlockAndOpenLinkedDoors()
-    {
-        SetUnlockedOpen(true);
+	public string Prompt
+	{
+		get
+		{
+			if (!_unlocked)
+			{
+				return $"Locked  (Need: {RequiredKeys}, Have: {AvailableKeys})";
+			}
+			return "Open Door";
+		}
+	}
 
-        if (_syncingLinkedDoors) return;
+	private int RequiredKeys => Mathf.Max(1, keysRequired);
 
-        _syncingLinkedDoors = true;
-        SyncLinkedDoors(GetComponentsInParent<LockedDoor>(true));
-        SyncLinkedDoors(GetComponentsInChildren<LockedDoor>(true));
-        _syncingLinkedDoors = false;
-    }
+	private int AvailableKeys
+	{
+		get
+		{
+			if (!(GameManager.Instance != null))
+			{
+				return 0;
+			}
+			return GameManager.Instance.keysAvailable;
+		}
+	}
 
-    private void SyncLinkedDoors(LockedDoor[] linkedDoors)
-    {
-        if (linkedDoors == null) return;
+	private void OnValidate()
+	{
+		keysRequired = Mathf.Max(1, keysRequired);
+	}
 
-        foreach (LockedDoor linkedDoor in linkedDoors)
-        {
-            if (linkedDoor == null || linkedDoor == this) continue;
+	private void Start()
+	{
+		keysRequired = RequiredKeys;
+		if (doorLeaf == null)
+		{
+			doorLeaf = base.transform;
+		}
+		_audio = GetComponent<AudioSource>();
+		if (_audio == null)
+		{
+			_audio = base.gameObject.AddComponent<AudioSource>();
+		}
+		_audio.playOnAwake = false;
+		_audio.spatialBlend = 1f;
+		_audio.maxDistance = 18f;
+		_audio.rolloffMode = AudioRolloffMode.Linear;
+		_hinge = new GameObject(doorLeaf.name + "_Hinge").transform;
+		_hinge.SetParent(doorLeaf.parent, worldPositionStays: false);
+		_hinge.position = GetHingeEdgeWorld(doorLeaf, hingeSide);
+		_hinge.rotation = doorLeaf.rotation;
+		doorLeaf.SetParent(_hinge, worldPositionStays: true);
+		_closedRot = _hinge.localRotation;
+		_openRot = _closedRot * Quaternion.Euler(0f, openAngle, 0f);
+	}
 
-            linkedDoor.SetUnlockedOpen(false);
-        }
-    }
+	private void Update()
+	{
+		if (!(_hinge == null))
+		{
+			_hinge.localRotation = Quaternion.RotateTowards(_hinge.localRotation, _open ? _openRot : _closedRot, speed * Time.deltaTime);
+		}
+	}
 
-    private void SetUnlockedOpen(bool open)
-    {
-        _unlocked = true;
-        _open = open;
-    }
+	public void Seal()
+	{
+		_sealed = true;
+		_open = false;
+		PlayDoor(opening: false);
+	}
 
-    private static Vector3 GetHingeEdgeWorld(Transform leaf, HingeSide side)
-    {
-        var renderers = leaf.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return leaf.position;
+	public void Unseal(bool open)
+	{
+		_sealed = false;
+		_unlocked = true;
+		_open = open;
+		if (open)
+		{
+			PlayDoor(opening: true);
+		}
+	}
 
-        Bounds b = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+	public void Interact()
+	{
+		if (_sealed)
+		{
+			return;
+		}
+		if (!_unlocked)
+		{
+			if (GameManager.Instance == null)
+			{
+				return;
+			}
+			if (_debugLogs)
+			{
+				Debug.Log($"[LockedDoor] Interact '{base.name}'. Need={RequiredKeys}, available={GameManager.Instance.keysAvailable}, collected={GameManager.Instance.keysCollected}", this);
+			}
+			if (AvailableKeys < RequiredKeys)
+			{
+				PlayClip(lockedClip);
+				return;
+			}
+			for (int i = 0; i < RequiredKeys; i++)
+			{
+				if (!GameManager.Instance.UseKey())
+				{
+					return;
+				}
+			}
+			UnlockAndOpenLinkedDoors();
+		}
+		else
+		{
+			_open = !_open;
+			PlayDoor(_open);
+		}
+	}
 
-        Vector3 right = leaf.right;
-        Vector3 center = b.center;
-        float halfExtent = Vector3.Dot(b.extents, new Vector3(Mathf.Abs(right.x), Mathf.Abs(right.y), Mathf.Abs(right.z)));
-        return center + right * (side == HingeSide.Left ? -halfExtent : halfExtent);
-    }
+	private void PlayDoor(bool opening)
+	{
+		AudioClip clip = (opening ? openClip : closeClip);
+		PlayClip(clip);
+	}
+
+	private void PlayClip(AudioClip clip)
+	{
+		if (_audio != null && clip != null)
+		{
+			_audio.PlayOneShot(clip, volume);
+		}
+	}
+
+	private void UnlockAndOpenLinkedDoors()
+	{
+		SetUnlockedOpen(open: true);
+		if (!_syncingLinkedDoors)
+		{
+			_syncingLinkedDoors = true;
+			if (linkedDoors != null && linkedDoors.Length != 0)
+			{
+				SyncLinkedDoors(linkedDoors);
+			}
+			else
+			{
+				SyncLinkedDoors(GetComponentsInParent<LockedDoor>(includeInactive: true));
+				SyncLinkedDoors(GetComponentsInChildren<LockedDoor>(includeInactive: true));
+			}
+			_syncingLinkedDoors = false;
+		}
+	}
+
+	private void SyncLinkedDoors(LockedDoor[] linkedDoors)
+	{
+		if (linkedDoors == null)
+		{
+			return;
+		}
+		foreach (LockedDoor lockedDoor in linkedDoors)
+		{
+			if (!(lockedDoor == null) && !(lockedDoor == this))
+			{
+				lockedDoor.SetUnlockedOpen(open: false);
+			}
+		}
+	}
+
+	private void SetUnlockedOpen(bool open)
+	{
+		_unlocked = true;
+		_open = open;
+		PlayClip(unlockClip);
+		if (open)
+		{
+			PlayDoor(opening: true);
+		}
+	}
+
+	private static Vector3 GetHingeEdgeWorld(Transform leaf, HingeSide side)
+	{
+		Renderer[] componentsInChildren = leaf.GetComponentsInChildren<Renderer>();
+		if (componentsInChildren.Length == 0)
+		{
+			return leaf.position;
+		}
+		Bounds bounds = componentsInChildren[0].bounds;
+		for (int i = 1; i < componentsInChildren.Length; i++)
+		{
+			bounds.Encapsulate(componentsInChildren[i].bounds);
+		}
+		Vector3 right = leaf.right;
+		Vector3 center = bounds.center;
+		float num = Vector3.Dot(bounds.extents, new Vector3(Mathf.Abs(right.x), Mathf.Abs(right.y), Mathf.Abs(right.z)));
+		return center + right * ((side == HingeSide.Left) ? (0f - num) : num);
+	}
 }

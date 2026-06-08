@@ -8,13 +8,52 @@
 [Uu]serSettings/
 [Mm]emoryCaptures/
 
+# Unity build artifacts
+[Bb]uilt/
+ExportedObj/
+.consulo/
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb
+*.booproj
+.gradle/
+[Rr]ecordings/
+
 # IDE
 .vsconfig
 *.csproj
 *.sln
+*.suo
+*.user
+*.userprefs
+*.unityproj
 .vs/
 .idea/
+.vscode/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Crash reports / packaged builds
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
+
+# Generated / temp project junk
+Assets/Screenshots/
+Assets/Screenshots.meta
+Assets/_Trash/
+Assets/_Trash.meta
+Assets/InitTestScene*.unity
+Assets/InitTestScene*.unity.meta
+Assets/Scenes/**/OcclusionCullingData.asset
+Assets/Scenes/**/OcclusionCullingData.asset.meta
+
+# Root screenshots
+/__*.png
