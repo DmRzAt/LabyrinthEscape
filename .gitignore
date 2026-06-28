@@ -57,3 +57,12 @@ Assets/Scenes/**/OcclusionCullingData.asset.meta
 
 # Root screenshots
 /__*.png
+
+# Unity SRP auto-generated CommandBuffer files (land in project root by accident)
+/ComputeCommandBuffer.cs
+/IBaseCommandBuffer.cs
+/IComputeCommandBuffer.cs
+/IRasterCommandBuffer.cs
+/IUnsafeCommandBuffer.cs
+/RasterCommandBuffer.cs
+/UnsafeCommandBuffer.cs

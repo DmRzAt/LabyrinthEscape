@@ -2,6 +2,10 @@
 
 Gra 3D typu first-person corridor exploration / puzzle adventure tworzona w silniku Unity. Gracz porusza sie po mrocznym labiryncie z perspektywy pierwszej osoby, eksploruje korytarze i pomieszczenia, walczy bronia biala z przeciwnikami, rozwiazuje zagadki, zbiera przedmioty i klucze, otwiera drzwi i probuje dotrzec do wyjscia.
 
+## Gameplay
+
+Nagranie z rozgrywki: [youtube.com/watch?v=UuQTD5dbmXY](https://www.youtube.com/watch?v=UuQTD5dbmXY)
+
 ## Autorzy
 
 - Ivan Kasyniuk, nr albumu 37696
